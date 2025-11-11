@@ -4,26 +4,49 @@ const navMenu = document.querySelector('.nav-menu');
 
 // Enhanced mobile navigation with touch events
 function toggleMobileNav() {
-    hamburger.classList.toggle('active');
+    // Toggle visual state
+    const becameActive = hamburger.classList.toggle('active');
     navMenu.classList.toggle('active');
+    // Reflect state to assistive tech
+    if (hamburger && hamburger.setAttribute) {
+        hamburger.setAttribute('aria-expanded', String(becameActive));
+    }
 }
 
 // Add both click and touch events for better mobile support
-hamburger.addEventListener('click', toggleMobileNav);
-hamburger.addEventListener('touchstart', (e) => {
-    e.preventDefault();
-    toggleMobileNav();
-});
+if (hamburger) {
+    hamburger.addEventListener('click', toggleMobileNav);
+
+    // Touch handler (preserve existing behavior)
+    hamburger.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        toggleMobileNav();
+    }, { passive: false });
+
+    // Keyboard support: Enter and Space
+    hamburger.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ' || e.key === 'Spacebar') {
+            e.preventDefault();
+            toggleMobileNav();
+        }
+    });
+}
 
 // Close mobile menu when clicking on a link with touch support
 document.querySelectorAll('.nav-link').forEach(n => {
     n.addEventListener('click', () => {
         hamburger.classList.remove('active');
         navMenu.classList.remove('active');
+        if (hamburger && hamburger.setAttribute) {
+            hamburger.setAttribute('aria-expanded', 'false');
+        }
     });
     n.addEventListener('touchend', () => {
         hamburger.classList.remove('active');
         navMenu.classList.remove('active');
+        if (hamburger && hamburger.setAttribute) {
+            hamburger.setAttribute('aria-expanded', 'false');
+        }
     });
 });
 
@@ -55,16 +78,58 @@ function handleSwipe() {
 }
 
 // Smooth scrolling for navigation links
+// Smooth scrolling for navigation links with customizable duration (slow motion)
+function smoothScrollTo(target, duration = 1400) {
+    const startY = window.pageYOffset;
+    const navbar = document.querySelector('.navbar');
+    const navbarHeight = navbar ? navbar.offsetHeight : 0;
+    const targetRect = target.getBoundingClientRect();
+    // Compute target Y so the target sits just below the navbar
+    const targetY = startY + targetRect.top - navbarHeight - 10;
+    const distance = targetY - startY;
+    let startTime = null;
+
+    // easeInOutQuad
+    function ease(t) {
+        return t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
+    }
+
+    function step(timestamp) {
+        if (!startTime) startTime = timestamp;
+        const time = timestamp - startTime;
+        const progress = Math.min(time / duration, 1);
+        const eased = ease(progress);
+        window.scrollTo(0, Math.round(startY + distance * eased));
+
+        if (time < duration) {
+            requestAnimationFrame(step);
+        } else {
+            // Ensure element can be focused for accessibility
+            try {
+                if (!target.hasAttribute('tabindex')) target.setAttribute('tabindex', '-1');
+                target.focus({ preventScroll: true });
+            } catch (e) {
+                // ignore focus errors
+            }
+            // Update the URL hash without jumping
+            if (target.id) history.replaceState(null, '', `#${target.id}`);
+        }
+    }
+
+    requestAnimationFrame(step);
+}
+
 document.querySelectorAll('a[href^="#"]').forEach(anchor => {
     anchor.addEventListener('click', function (e) {
+        const href = this.getAttribute('href');
+        // Only handle same-page hash links
+        if (!href || href.charAt(0) !== '#') return;
+        const target = document.querySelector(href);
+        if (!target) return;
+
         e.preventDefault();
-        const target = document.querySelector(this.getAttribute('href'));
-        if (target) {
-            target.scrollIntoView({
-                behavior: 'smooth',
-                block: 'start'
-            });
-        }
+        // Use a longer duration for slow-motion feel (1400ms)
+        smoothScrollTo(target, 1400);
     });
 });
 
@@ -108,9 +173,22 @@ const imageObserver = new IntersectionObserver((entries) => {
     entries.forEach(entry => {
         if (entry.isIntersecting) {
             const img = entry.target;
-            img.classList.add('loaded');
-            img.classList.add('fade-in', 'visible');
-            imageObserver.unobserve(img);
+            // Use decode() when available so we don't rely on the browser's load event
+            // (some browsers defer load events for lazy images under certain privacy settings).
+            if (img.decode) {
+                img.decode().then(() => {
+                    img.classList.add('loaded', 'fade-in', 'visible');
+                    imageObserver.unobserve(img);
+                }).catch(() => {
+                    // If decode() fails, still show the image
+                    img.classList.add('loaded', 'fade-in', 'visible');
+                    imageObserver.unobserve(img);
+                });
+            } else {
+                // Fallback when decode() is not available
+                img.classList.add('loaded', 'fade-in', 'visible');
+                imageObserver.unobserve(img);
+            }
         }
     });
 }, { threshold: 0.1 });
@@ -235,10 +313,37 @@ if (!('ontouchstart' in window)) {
     });
 }
 
-// Initialize EmailJS
-(function() {
-    emailjs.init("Op0SYeDwtaKZxPBqC");
-})();
+// EmailJS initialization (secure usage)
+// NOTE: Do NOT hardcode EmailJS public keys or service/template IDs in committed client-side files.
+// Secure options:
+// 1) Preferred: Move email sending to a server endpoint (e.g., /send-email) and keep keys secret on the server.
+// 2) If you must use EmailJS client-side, store only a public key and service/template IDs in a non-committed config
+//    (or set them via environment during build). This code will attempt to read meta tags and initialize EmailJS
+//    only if those meta tags are present. If not present, the contact form will show a friendly message.
+
+const emailjsServiceMeta = document.querySelector('meta[name="emailjs-service-id"]');
+const emailjsTemplateMeta = document.querySelector('meta[name="emailjs-template-id"]');
+const emailjsKeyMeta = document.querySelector('meta[name="emailjs-key"]');
+
+// Track whether client-side EmailJS sending is available.
+// This prevents noisy console warnings on pages where EmailJS isn't intentionally configured.
+let emailSendingAvailable = false;
+if (typeof emailjs !== 'undefined' && typeof emailjs.init === 'function' && emailjsKeyMeta && emailjsServiceMeta && emailjsTemplateMeta) {
+    try {
+        // Initialize EmailJS with a public key provided via a meta tag (not recommended for secrets)
+        emailjs.init(emailjsKeyMeta.content);
+        emailSendingAvailable = true;
+        console.log('EmailJS initialized (client-side send enabled).');
+    } catch (err) {
+        // Initialization failed; fall back to demo mode without noisy warnings.
+        emailSendingAvailable = false;
+        console.info('EmailJS initialization failed; contact form will use demo fallback.');
+    }
+} else {
+    // Do not warn loudly — many deployments intentionally don't enable client-side EmailJS.
+    emailSendingAvailable = false;
+    console.info('Email sending not configured for this site; contact form will use demo fallback or a server-side endpoint.');
+}
 
 // Contact form handling
 const contactForm = document.getElementById('contactForm');
@@ -277,18 +382,32 @@ if (contactForm) {
             to_name: 'Neha Negi'
         };
         
-        // Send email using EmailJS
-        emailjs.send('service_w9jgdlq', 'template_qvn09d8', templateParams)
-            .then(function(response) {
-                showNotification('Thank you for your message! I will get back to you soon.', 'success');
+        // Send email using EmailJS if it was successfully initialized and configured.
+        if (emailSendingAvailable) {
+            emailjs.send(emailjsServiceMeta.content, emailjsTemplateMeta.content, templateParams)
+                .then(function(response) {
+                    showNotification('Thank you for your message! I will get back to you soon.', 'success');
+                    contactForm.reset();
+                }, function(error) {
+                    showNotification('Sorry, there was an error sending your message. Please try again.', 'error');
+                })
+                .finally(function() {
+                    submitBtn.textContent = originalText;
+                    submitBtn.disabled = false;
+                });
+        } else {
+            // Friendly demo/send-simulation fallback so the UI feels responsive when EmailJS is not configured.
+            console.info('EmailJS not configured; using demo send fallback.');
+
+            // Small simulated network delay to show loading state
+            setTimeout(() => {
+                // Simulate successful send (demo mode). In production, replace with server-side endpoint.
+                showNotification('Thank you for your message! (Demo send) I will get back to you soon.', 'success');
                 contactForm.reset();
-            }, function(error) {
-                showNotification('Sorry, there was an error sending your message. Please try again.', 'error');
-            })
-            .finally(function() {
                 submitBtn.textContent = originalText;
                 submitBtn.disabled = false;
-            });
+            }, 1200);
+        }
     });
 }
 
@@ -309,10 +428,17 @@ function showNotification(message, type = 'info') {
     // Create notification element
     const notification = document.createElement('div');
     notification.className = `notification notification-${type}`;
+    // Accessibility: announce via screen readers and ensure atomic updates
+    notification.setAttribute('role', 'status');
+    notification.setAttribute('aria-live', type === 'error' ? 'assertive' : 'polite');
+    notification.setAttribute('aria-atomic', 'true');
+    // Allow programmatic focus without including in tab order
+    notification.tabIndex = -1;
+
     notification.innerHTML = `
         <div class="notification-content">
             <span class="notification-message">${message}</span>
-            <button class="notification-close">&times;</button>
+            <button class="notification-close" aria-label="Close notification">&times;</button>
         </div>
     `;
     
@@ -340,14 +466,38 @@ function showNotification(message, type = 'info') {
         notification.style.transform = 'translateX(0)';
     }, 100);
     
-    // Close button functionality
+    // Close button functionality — ensure accessible name and keyboard operability
     const closeBtn = notification.querySelector('.notification-close');
-    closeBtn.addEventListener('click', () => {
-        notification.style.transform = 'translateX(100%)';
-        setTimeout(() => {
-            notification.remove();
-        }, 300);
-    });
+    if (closeBtn) {
+        // Ensure accessible label exists (also covers older browsers)
+        if (!closeBtn.getAttribute('aria-label')) {
+            closeBtn.setAttribute('aria-label', 'Close notification');
+        }
+
+        const closeNotification = () => {
+            notification.style.transform = 'translateX(100%)';
+            setTimeout(() => {
+                if (notification.parentNode) notification.remove();
+            }, 300);
+        };
+
+        closeBtn.addEventListener('click', closeNotification);
+
+        // Keyboard support for close button (Enter/Space handled by button by default, add Escape handler)
+        closeBtn.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                e.preventDefault();
+                closeNotification();
+            }
+        });
+
+        // Allow closing with Escape when notification has focus
+        notification.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                closeNotification();
+            }
+        });
+    }
     
     // Auto remove after 5 seconds
     setTimeout(() => {
@@ -359,6 +509,97 @@ function showNotification(message, type = 'info') {
         }
     }, 5000);
 }
+
+/* -----------------------
+   Contact section enhancements
+   - Auto-resize textarea
+   - Copy-to-clipboard for contact email
+   - Inline validation visual states
+   - Submit button loading affordance (visual)
+   ----------------------- */
+
+function setupContactEnhancements() {
+    // Auto-resize textarea
+    const textarea = document.querySelector('#message');
+    if (textarea) {
+        const resize = () => {
+            textarea.style.height = 'auto';
+            textarea.style.height = textarea.scrollHeight + 'px';
+        };
+        ['input', 'change'].forEach(ev => textarea.addEventListener(ev, resize));
+        // Initialize size
+        resize();
+    }
+
+    // Copy-to-clipboard for the email shown in contact-info
+    const emailNode = document.querySelector('.contact-info p');
+    if (emailNode) {
+        // Try to find the email text inside
+        const emailText = emailNode.textContent.trim();
+        // Create a small copy button next to the email
+        const copyBtn = document.createElement('button');
+        copyBtn.type = 'button';
+        copyBtn.className = 'copy-email-btn';
+        copyBtn.setAttribute('aria-label', 'Copy email to clipboard');
+        // Use inline SVG icon for copy to avoid reliance on Font Awesome
+        copyBtn.innerHTML = '' +
+            '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">' +
+            '<rect x="9" y="9" width="9" height="9" rx="1" stroke="currentColor" stroke-width="1.2"/>' +
+            '<path d="M15 7H7a1 1 0 00-1 1v8" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>' +
+            '</svg>';
+        copyBtn.addEventListener('click', async () => {
+            try {
+                await navigator.clipboard.writeText(emailText);
+                showNotification('Email address copied to clipboard', 'success');
+            } catch (err) {
+                // Fallback: select text and prompt
+                const tmp = document.createElement('textarea');
+                tmp.value = emailText;
+                document.body.appendChild(tmp);
+                tmp.select();
+                try { document.execCommand('copy'); showNotification('Email address copied to clipboard', 'success'); }
+                catch (e) { showNotification('Could not copy email. Please select it manually.', 'error'); }
+                document.body.removeChild(tmp);
+            }
+        });
+
+        // Append copy button after the email paragraph
+        emailNode.style.position = 'relative';
+        emailNode.appendChild(copyBtn);
+    }
+
+    // Inline validation visual states for inputs
+    const inputs = document.querySelectorAll('#contactForm input[required], #contactForm textarea[required]');
+    inputs.forEach(input => {
+        const setValid = () => {
+            if (!input.checkValidity()) {
+                input.classList.add('invalid');
+            } else {
+                input.classList.remove('invalid');
+            }
+        };
+        input.addEventListener('input', setValid);
+        input.addEventListener('blur', setValid);
+    });
+
+    // Enhance submit button with small spinner when submitting (visual only)
+    const form = document.getElementById('contactForm');
+    if (form) {
+        form.addEventListener('submit', (e) => {
+            const btn = form.querySelector('button[type="submit"]');
+            if (btn) {
+                btn.classList.add('loading');
+            }
+            // Remove loading class after simulated max time to ensure UI returns
+            setTimeout(() => { if (btn) btn.classList.remove('loading'); }, 3000);
+        });
+    }
+}
+
+// Initialize contact enhancements on DOM ready
+document.addEventListener('DOMContentLoaded', () => {
+    setupContactEnhancements();
+});
 
 // Add loading animation to buttons
 document.querySelectorAll('.btn').forEach(button => {
@@ -547,7 +788,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (typeof emailjs !== 'undefined') {
         console.log('✓ EmailJS loaded successfully');
     } else {
-        console.warn('✗ EmailJS not loaded');
+        console.info('EmailJS not loaded (this is expected if client-side email sending isn\'t configured).');
     }
     
     // Check Font Awesome
@@ -556,10 +797,12 @@ document.addEventListener('DOMContentLoaded', () => {
     document.body.appendChild(fontAwesomeTest);
     
     const computedStyle = window.getComputedStyle(fontAwesomeTest);
-    if (fontAwesomeTest.style.fontFamily.includes('Font Awesome')) {
+    const ff = (computedStyle && (computedStyle.getPropertyValue('font-family') || computedStyle.fontFamily)) || '';
+    // Look for common Font Awesome family identifiers (robust to CDN/version differences)
+    if (/font\s?-?awesome|fontawesome|fortawesome/i.test(ff)) {
         console.log('✓ Font Awesome loaded successfully');
     } else {
-        console.warn('✗ Font Awesome may not be loaded properly');
+        console.warn('✗ Font Awesome may not be loaded properly (font-family: ' + ff + ')');
     }
     
     document.body.removeChild(fontAwesomeTest);

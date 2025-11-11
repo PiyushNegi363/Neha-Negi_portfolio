@@ -122,7 +122,27 @@ Replace the placeholder in the hero section:
 
 **Email**: nehanegihld21@gmail.com
 
-## 🔧 Future Enhancements
+## � EmailJS / Contact Form Configuration
+
+If you are using EmailJS for client-side email delivery, avoid committing keys or template/service IDs to the repository. Exposing these values can allow third parties to send messages using your templates.
+
+Recommended approaches:
+
+- Preferred: Implement a small server endpoint (for example, `/send-email`) that accepts the form payload and forwards email using your EmailJS (or other) API key stored securely on the server. This keeps secret keys out of client-side code and repository history.
+- If you must use EmailJS client-side, provide only a public key and service/template IDs through a secure configuration step (build-time environment variables, CI secrets, or local non-committed meta tags). The project is configured to look for the following meta tags in `index.html`:
+
+    ```html
+    <!-- Example (do not commit secrets) -->
+    <meta name="emailjs-key" content="YOUR_PUBLIC_KEY_HERE">
+    <meta name="emailjs-service-id" content="your_service_id">
+    <meta name="emailjs-template-id" content="your_template_id">
+    ```
+
+    Note: Meta tags are visible in the published HTML and are not secure for secrets. Use only if you understand the risk and restrict template usage in EmailJS.
+
+If you want help wiring a secure server-side endpoint (Node/Express, serverless function), tell me which environment you prefer and I can add a minimal implementation and instructions.
+
+## �🔧 Future Enhancements
 
 ### Optional Add-ons (as mentioned in requirements)
 - Testimonials section

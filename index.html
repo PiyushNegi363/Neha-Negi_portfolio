@@ -2,20 +2,65 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="Neha Negi - Professional Taxation & Legal Associate specializing in GST compliance, income tax filing, and corporate law services.">
     <meta name="keywords" content="taxation, legal services, GST compliance, income tax, corporate law, accounting">
     <title>Neha Negi - Taxation & Legal Associate</title>
+    <!-- SEO / Social -->
+    <!-- Fallback favicon: use existing hero image until a proper favicon is added -->
+    <link rel="icon" href="image_1.jpg" type="image/jpeg">
+    <link rel="canonical" href="https://yourdomain.com/">
+    <meta property="og:title" content="Neha Negi - Taxation & Legal Associate">
+    <meta property="og:description" content="Professional taxation & legal services, GST compliance, income tax filing, and corporate law advisory.">
+    <meta property="og:image" content="image_1.jpg">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://yourdomain.com/">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Neha Negi - Taxation & Legal Associate">
+    <meta name="twitter:description" content="Professional taxation & legal services, GST compliance, income tax filing, and corporate law advisory.">
+    <meta name="twitter:image" content="image_1.jpg">
     
     <!-- Performance optimizations -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link rel="preload" href="photo.jpg" as="image">
+    <link rel="preload" href="image_1.jpg" as="image">
     <link rel="stylesheet" href="styles.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css">
+    <!-- Font Awesome detection + fallback: if CDN stylesheet fails to load the webfont, inject an alternate CDN copy -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            try {
+                // Create a hidden test element that uses a Font Awesome class
+                var test = document.createElement('i');
+                test.className = 'fas fa-check';
+                test.style.position = 'absolute';
+                test.style.left = '-9999px';
+                document.body.appendChild(test);
+
+                var ff = window.getComputedStyle(test).getPropertyValue('font-family') || '';
+                document.body.removeChild(test);
+
+                // If the computed font-family doesn't mention Font Awesome, load a fallback
+                if (!/Font Awesome/i.test(ff)) {
+                    console.warn('Font Awesome appears not to be available. Loading fallback stylesheet.');
+                    var fallback = document.createElement('link');
+                    fallback.rel = 'stylesheet';
+                    fallback.href = 'https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css';
+                    fallback.crossOrigin = 'anonymous';
+                    fallback.onload = function () { console.log('Font Awesome fallback loaded'); };
+                    fallback.onerror = function () { console.warn('Font Awesome fallback failed to load'); };
+                    document.head.appendChild(fallback);
+                } else {
+                    console.log('Font Awesome appears to be loaded');
+                }
+            } catch (e) {
+                // Non-fatal — don't break the page if checks fail
+                console.warn('Font Awesome detection failed', e);
+            }
+        });
+    </script>
 </head>
 <body>
     <!-- Navigation -->
@@ -33,11 +78,11 @@
                 <li class="nav-item"><a href="#projects" class="nav-link">Projects</a></li>
                 <li class="nav-item"><a href="#contact" class="nav-link">Contact</a></li>
             </ul>
-            <div class="hamburger">
-                <span class="bar"></span>
-                <span class="bar"></span>
-                <span class="bar"></span>
-            </div>
+            <button class="hamburger" type="button" aria-label="Toggle navigation" aria-expanded="false">
+                <span class="bar" aria-hidden="true"></span>
+                <span class="bar" aria-hidden="true"></span>
+                <span class="bar" aria-hidden="true"></span>
+            </button>
         </div>
     </nav>
 
@@ -84,7 +129,7 @@
                 </div>
                 <div class="hero-image">
                     <div class="profile-image">
-                        <img src="image_1.jpg" alt="Neha Negi - Professional Photo" class="hero-profile-img" loading="lazy">
+                        <img src="image_1.jpg" alt="Neha Negi - Professional Photo" class="hero-profile-img" fetchpriority="high" decoding="async">
                     </div>
                 </div>
             </div>
@@ -330,8 +375,9 @@
             <div class="contact-content">
                 <div class="contact-info">
                     <div class="contact-item">
-                        <div class="contact-icon">
-                            <i class="fas fa-envelope"></i>
+                        <div class="contact-icon" aria-hidden="true">
+                            <!-- Use provided mail icon from icons/ folder -->
+                            <img src="icons/mail.png" alt="" width="28" height="28" />
                         </div>
                         <div class="contact-details">
                             <h3>Email</h3>
@@ -394,11 +440,19 @@
                 <div class="footer-section">
                     <h4>Contact Info</h4>
                     <div class="contact-info">
-                        <p><i class="fas fa-envelope"></i> nehanegihld21@gmail.com</p>
-                        <p><i class="fas fa-map-marker-alt"></i> India</p>
+                        <p>
+                            <img src="icons/mail.png" alt="" width="18" height="18" style="margin-right:8px; vertical-align:middle;" aria-hidden="true" />
+                            nehanegihld21@gmail.com
+                        </p>
+                        <p>
+                            <img src="icons/placeholder.png" alt="location icon" width="16" height="16" style="margin-right:8px; vertical-align:middle;" aria-hidden="true" />
+                            India
+                        </p>
                     </div>
                     <div class="social-links">
-                        <a href="#" class="social-link"><i class="fab fa-linkedin"></i></a>
+                        <a href="#" class="social-link" aria-label="LinkedIn">
+                            <img src="icons/linkedin.png" alt="LinkedIn" width="42" height="42" />
+                        </a>
                     </div>
                 </div>
             </div>
