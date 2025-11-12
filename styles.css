@@ -205,6 +205,30 @@ body {
     width: 100%;
 }
 
+/* Accessible focus styles: visible rings for keyboard users */
+:focus-visible {
+    outline: 3px solid rgba(244, 166, 205, 0.32);
+    outline-offset: 3px;
+}
+
+a:focus-visible,
+button:focus-visible,
+.nav-link:focus-visible,
+.btn:focus-visible,
+.copy-email-btn:focus-visible,
+.nav-resume:focus-visible,
+.hamburger:focus-visible,
+.social-link:focus-visible {
+    outline: 3px solid rgba(244, 166, 205, 0.32);
+    outline-offset: 3px;
+    box-shadow: 0 4px 12px rgba(244, 166, 205, 0.08);
+}
+
+/* Ensure focused nav-link shows underline for orientation */
+.nav-link:focus-visible::after {
+    width: 100% !important;
+}
+
 /* Highlighted Resume button in the top-right corner */
 .nav-resume {
     display: inline-block;
@@ -1350,6 +1374,9 @@ section {
     .nav-menu.active {
         transform: translateX(0);
         touch-action: manipulation;
+        /* hint that transform will change for smoother animations */
+        will-change: transform;
+        transform: translateZ(0) translateX(0);
     }
 
     .hamburger {

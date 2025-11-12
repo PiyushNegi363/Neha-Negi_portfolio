@@ -50,6 +50,33 @@ document.querySelectorAll('.nav-link').forEach(n => {
     });
 });
 
+// Make elements with role="button" or explicit tabindex keyboard-activatable
+function enableKeyboardActivation() {
+    const selector = '[role="button"], [tabindex="0"]';
+    const elems = document.querySelectorAll(selector);
+    elems.forEach(el => {
+        // Avoid binding multiple times
+        if (el.dataset.keyboardBound) return;
+
+        el.addEventListener('keydown', (e) => {
+            const key = e.key || e.code;
+            if (key === 'Enter' || key === ' ' || key === 'Spacebar') {
+                // Allow the element to respond as if clicked
+                e.preventDefault();
+                // Some elements may not be naturally clickable; trigger click handler
+                try { el.click(); } catch (err) { /* ignore */ }
+            }
+        });
+
+        el.dataset.keyboardBound = '1';
+    });
+}
+
+// Initialize keyboard activation support once DOM is ready
+document.addEventListener('DOMContentLoaded', () => {
+    enableKeyboardActivation();
+});
+
 // Swipe gesture for mobile navigation
 let touchStartX = 0;
 let touchEndX = 0;
