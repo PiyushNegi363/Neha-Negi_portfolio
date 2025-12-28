@@ -93,7 +93,7 @@ document.addEventListener('touchend', e => {
 function handleSwipe() {
     const swipeThreshold = 100;
     const swipeDistance = touchEndX - touchStartX;
-    
+
     // Swipe right to open menu
     if (swipeDistance > swipeThreshold && !navMenu.classList.contains('active')) {
         toggleMobileNav();
@@ -238,7 +238,7 @@ document.addEventListener('DOMContentLoaded', () => {
 function typeWriter(element, text, speed = 100) {
     let i = 0;
     element.innerHTML = '';
-    
+
     function type() {
         if (i < text.length) {
             element.innerHTML += text.charAt(i);
@@ -246,7 +246,7 @@ function typeWriter(element, text, speed = 100) {
             setTimeout(type, speed);
         }
     }
-    
+
     type();
 }
 
@@ -261,11 +261,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // Add hover effects to cards
 document.querySelectorAll('.skill-card, .service-item, .project-card').forEach(card => {
-    card.addEventListener('mouseenter', function() {
+    card.addEventListener('mouseenter', function () {
         this.style.transform = 'translateY(-10px) scale(1.02)';
     });
-    
-    card.addEventListener('mouseleave', function() {
+
+    card.addEventListener('mouseleave', function () {
         this.style.transform = 'translateY(0) scale(1)';
     });
 });
@@ -283,7 +283,7 @@ window.addEventListener('scroll', () => {
             current = section.getAttribute('id');
         }
     });
-    
+
     navLinks.forEach(link => {
         link.classList.remove('active');
         if (link.getAttribute('href') === `#${current}`) {
@@ -294,21 +294,21 @@ window.addEventListener('scroll', () => {
 
 // Highlight active link on scroll
 window.addEventListener('scroll', () => {
-  const sections = document.querySelectorAll('section');
-  const navLinks = document.querySelectorAll('.nav-link');
-  let current = '';
-  sections.forEach(section => {
-    const sectionTop = section.offsetTop - 100;
-    if (pageYOffset >= sectionTop) {
-      current = section.getAttribute('id');
-    }
-  });
-  navLinks.forEach(link => {
-    link.classList.remove('active');
-    if (link.getAttribute('href') === '#' + current) {
-      link.classList.add('active');
-    }
-  });
+    const sections = document.querySelectorAll('section');
+    const navLinks = document.querySelectorAll('.nav-link');
+    let current = '';
+    sections.forEach(section => {
+        const sectionTop = section.offsetTop - 100;
+        if (pageYOffset >= sectionTop) {
+            current = section.getAttribute('id');
+        }
+    });
+    navLinks.forEach(link => {
+        link.classList.remove('active');
+        if (link.getAttribute('href') === '#' + current) {
+            link.classList.add('active');
+        }
+    });
 });
 
 // Add CSS for active navigation state
@@ -375,32 +375,32 @@ if (typeof emailjs !== 'undefined' && typeof emailjs.init === 'function' && emai
 // Contact form handling
 const contactForm = document.getElementById('contactForm');
 if (contactForm) {
-    contactForm.addEventListener('submit', function(e) {
+    contactForm.addEventListener('submit', function (e) {
         e.preventDefault();
-        
+
         // Get form data
         const formData = new FormData(this);
         const name = formData.get('name');
         const email = formData.get('email');
         const message = formData.get('message');
-        
+
         // Basic validation
         if (!name || !email || !message) {
             showNotification('Please fill in all fields.', 'error');
             return;
         }
-        
+
         if (!isValidEmail(email)) {
             showNotification('Please enter a valid email address.', 'error');
             return;
         }
-        
+
         // Show loading state
         const submitBtn = this.querySelector('button[type="submit"]');
         const originalText = submitBtn.textContent;
         submitBtn.textContent = 'Sending...';
         submitBtn.disabled = true;
-        
+
         // Prepare email parameters
         const templateParams = {
             from_name: name,
@@ -408,32 +408,36 @@ if (contactForm) {
             message: message,
             to_name: 'Neha Negi'
         };
-        
+
         // Send email using EmailJS if it was successfully initialized and configured.
         if (emailSendingAvailable) {
             emailjs.send(emailjsServiceMeta.content, emailjsTemplateMeta.content, templateParams)
-                .then(function(response) {
+                .then(function (response) {
                     showNotification('Thank you for your message! I will get back to you soon.', 'success');
                     contactForm.reset();
-                }, function(error) {
-                    showNotification('Sorry, there was an error sending your message. Please try again.', 'error');
+                }, function (error) {
+                    let errorMsg = 'Sorry, there was an error sending your message.';
+                    if (error.status === 401) {
+                        errorMsg = 'Email service configuration error. Please try again later.';
+                    } else if (error.status === 0) {
+                        errorMsg = 'Network error. Please check your internet connection.';
+                    }
+                    showNotification(errorMsg, 'error');
                 })
-                .finally(function() {
+                .finally(function () {
                     submitBtn.textContent = originalText;
                     submitBtn.disabled = false;
+                    submitBtn.classList.remove('loading');
                 });
         } else {
-            // Friendly demo/send-simulation fallback so the UI feels responsive when EmailJS is not configured.
-            console.info('EmailJS not configured; using demo send fallback.');
-
-            // Small simulated network delay to show loading state
+            // Friendly demo/send-simulation fallback
             setTimeout(() => {
-                // Simulate successful send (demo mode). In production, replace with server-side endpoint.
-                showNotification('Thank you for your message! (Demo send) I will get back to you soon.', 'success');
+                showNotification('Thank you for your message! (Demo mode) I will get back to you soon.', 'success');
                 contactForm.reset();
                 submitBtn.textContent = originalText;
                 submitBtn.disabled = false;
-            }, 1200);
+                submitBtn.classList.remove('loading');
+            }, 1500);
         }
     });
 }
@@ -445,97 +449,76 @@ function isValidEmail(email) {
 }
 
 // Notification system
+// Notification system
 function showNotification(message, type = 'info') {
     // Remove existing notifications
-    const existingNotification = document.querySelector('.notification');
-    if (existingNotification) {
-        existingNotification.remove();
-    }
-    
+    const existingNotifications = document.querySelectorAll('.notification');
+    existingNotifications.forEach(notif => notif.remove());
+
     // Create notification element
     const notification = document.createElement('div');
     notification.className = `notification notification-${type}`;
-    // Accessibility: announce via screen readers and ensure atomic updates
+    // Accessibility: announce via screen readers
     notification.setAttribute('role', 'status');
     notification.setAttribute('aria-live', type === 'error' ? 'assertive' : 'polite');
-    notification.setAttribute('aria-atomic', 'true');
-    // Allow programmatic focus without including in tab order
-    notification.tabIndex = -1;
+
+    const iconClass = type === 'success' ? 'fas fa-check-circle' :
+        type === 'error' ? 'fas fa-exclamation-circle' :
+            'fas fa-info-circle';
 
     notification.innerHTML = `
         <div class="notification-content">
+            <div class="notification-icon">
+                <i class="${iconClass}" aria-hidden="true"></i>
+            </div>
             <span class="notification-message">${message}</span>
-            <button class="notification-close" aria-label="Close notification">&times;</button>
+            <button class="notification-close" aria-label="Close notification">
+                <i class="fas fa-times" aria-hidden="true"></i>
+            </button>
         </div>
     `;
-    
-    // Add styles
-    notification.style.cssText = `
-        position: fixed;
-        top: 100px;
-        right: 20px;
-        background: ${type === 'success' ? '#a8d5ba' : type === 'error' ? '#f4a6cd' : '#c8b5d9'};
-        color: white;
-        padding: 1rem 1.5rem;
-        border-radius: 8px;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-        z-index: 10000;
-        max-width: 400px;
-        transform: translateX(100%);
-        transition: transform 0.3s ease;
-    `;
-    
+
     // Add to page
     document.body.appendChild(notification);
-    
+
     // Animate in
-    setTimeout(() => {
-        notification.style.transform = 'translateX(0)';
-    }, 100);
-    
-    // Close button functionality — ensure accessible name and keyboard operability
+    requestAnimationFrame(() => {
+        notification.classList.add('active');
+    });
+
+    // Close button functionality
     const closeBtn = notification.querySelector('.notification-close');
+    const closeNotification = () => {
+        notification.classList.remove('active');
+        setTimeout(() => {
+            if (notification.parentNode) notification.remove();
+        }, 500);
+    };
+
     if (closeBtn) {
-        // Ensure accessible label exists (also covers older browsers)
-        if (!closeBtn.getAttribute('aria-label')) {
-            closeBtn.setAttribute('aria-label', 'Close notification');
-        }
-
-        const closeNotification = () => {
-            notification.style.transform = 'translateX(100%)';
-            setTimeout(() => {
-                if (notification.parentNode) notification.remove();
-            }, 300);
-        };
-
         closeBtn.addEventListener('click', closeNotification);
-
-        // Keyboard support for close button (Enter/Space handled by button by default, add Escape handler)
-        closeBtn.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape') {
-                e.preventDefault();
-                closeNotification();
-            }
-        });
-
-        // Allow closing with Escape when notification has focus
-        notification.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape') {
-                closeNotification();
-            }
-        });
     }
-    
-    // Auto remove after 5 seconds
-    setTimeout(() => {
-        if (notification.parentNode) {
-            notification.style.transform = 'translateX(100%)';
-            setTimeout(() => {
-                notification.remove();
-            }, 300);
+
+    // Escape key to close
+    const handleEscape = (e) => {
+        if (e.key === 'Escape') {
+            closeNotification();
+            document.removeEventListener('keydown', handleEscape);
         }
+    };
+    document.addEventListener('keydown', handleEscape);
+
+    // Auto remove after 5 seconds
+    const autoRemoveTimeout = setTimeout(() => {
+        closeNotification();
     }, 5000);
+
+    // Clear timeout if manually closed
+    if (closeBtn) {
+        closeBtn.addEventListener('click', () => clearTimeout(autoRemoveTimeout));
+    }
 }
+
 
 /* -----------------------
    Contact section enhancements
@@ -598,15 +581,22 @@ function setupContactEnhancements() {
     // Inline validation visual states for inputs
     const inputs = document.querySelectorAll('#contactForm input[required], #contactForm textarea[required]');
     inputs.forEach(input => {
-        const setValid = () => {
-            if (!input.checkValidity()) {
+        const setValidationState = () => {
+            if (input.value.trim() === '') {
+                input.style.borderColor = 'var(--border-color)';
+                input.classList.remove('invalid', 'valid');
+            } else if (!input.checkValidity()) {
                 input.classList.add('invalid');
+                input.classList.remove('valid');
+                input.style.borderColor = 'var(--accent-color)';
             } else {
+                input.classList.add('valid');
                 input.classList.remove('invalid');
+                input.style.borderColor = 'var(--primary-color)';
             }
         };
-        input.addEventListener('input', setValid);
-        input.addEventListener('blur', setValid);
+        input.addEventListener('input', setValidationState);
+        input.addEventListener('blur', setValidationState);
     });
 
     // Enhance submit button with small spinner when submitting (visual only)
@@ -630,16 +620,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // Add loading animation to buttons
 document.querySelectorAll('.btn').forEach(button => {
-    button.addEventListener('click', function(e) {
+    button.addEventListener('click', function (e) {
         if (this.type === 'submit') return; // Don't animate submit buttons
-        
+
         // Add ripple effect
         const ripple = document.createElement('span');
         const rect = this.getBoundingClientRect();
         const size = Math.max(rect.width, rect.height);
         const x = e.clientX - rect.left - size / 2;
         const y = e.clientY - rect.top - size / 2;
-        
+
         ripple.style.cssText = `
             position: absolute;
             width: ${size}px;
@@ -652,11 +642,11 @@ document.querySelectorAll('.btn').forEach(button => {
             animation: ripple 0.6s linear;
             pointer-events: none;
         `;
-        
+
         this.style.position = 'relative';
         this.style.overflow = 'hidden';
         this.appendChild(ripple);
-        
+
         setTimeout(() => {
             ripple.remove();
         }, 600);
@@ -697,7 +687,7 @@ const scrollObserver = new IntersectionObserver((entries) => {
             // Immediate animation trigger for faster response
             entry.target.classList.add('animate');
             entry.target.classList.add('visible');
-            
+
             // Add staggered delay only for elements with stagger class
             if (entry.target.classList.contains('scroll-animate-stagger')) {
                 const delay = index * 100; // Reduced from 150ms to 100ms
@@ -709,51 +699,51 @@ const scrollObserver = new IntersectionObserver((entries) => {
 
 // Observe all scroll-animate elements
 document.addEventListener('DOMContentLoaded', () => {
-  // Observe elements for scroll animations
-document.querySelectorAll('.scroll-animate-left, .scroll-animate-right, .scroll-animate-scale, .scroll-animate-stagger, .scroll-animate-rotate').forEach(el => {
-    scrollObserver.observe(el);
-});
-
-// Performance: Debounced resize handler
-let resizeTimeout;
-window.addEventListener('resize', () => {
-    clearTimeout(resizeTimeout);
-    resizeTimeout = setTimeout(() => {
-        // Recalculate any layout-dependent values
-        const navbar = document.querySelector('.navbar');
-        if (navbar) {
-            navbar.style.transition = 'none';
-            setTimeout(() => {
-                navbar.style.transition = 'all 0.4s cubic-bezier(0.23, 1, 0.32, 1)';
-            }, 100);
-        }
-    }, 250);
-});
-
-// Optimize scroll performance with passive listeners
-window.addEventListener('scroll', updateNavbar, { passive: true });
-
-// Preload critical resources
-function preloadCriticalResources() {
-    const criticalImages = ['photo.jpg'];
-    criticalImages.forEach(src => {
-        const link = document.createElement('link');
-        link.rel = 'preload';
-        link.as = 'image';
-        link.href = src;
-        document.head.appendChild(link);
+    // Observe elements for scroll animations
+    document.querySelectorAll('.scroll-animate-left, .scroll-animate-right, .scroll-animate-scale, .scroll-animate-stagger, .scroll-animate-rotate').forEach(el => {
+        scrollObserver.observe(el);
     });
-}
 
-// Initialize performance optimizations
-document.addEventListener('DOMContentLoaded', () => {
-    preloadCriticalResources();
-    
-    // Add touch-friendly hover states for mobile
-    if ('ontouchstart' in window) {
-        document.body.classList.add('touch-device');
+    // Performance: Debounced resize handler
+    let resizeTimeout;
+    window.addEventListener('resize', () => {
+        clearTimeout(resizeTimeout);
+        resizeTimeout = setTimeout(() => {
+            // Recalculate any layout-dependent values
+            const navbar = document.querySelector('.navbar');
+            if (navbar) {
+                navbar.style.transition = 'none';
+                setTimeout(() => {
+                    navbar.style.transition = 'all 0.4s cubic-bezier(0.23, 1, 0.32, 1)';
+                }, 100);
+            }
+        }, 250);
+    });
+
+    // Optimize scroll performance with passive listeners
+    window.addEventListener('scroll', updateNavbar, { passive: true });
+
+    // Preload critical resources
+    function preloadCriticalResources() {
+        const criticalImages = ['photo.jpg'];
+        criticalImages.forEach(src => {
+            const link = document.createElement('link');
+            link.rel = 'preload';
+            link.as = 'image';
+            link.href = src;
+            document.head.appendChild(link);
+        });
     }
-});
+
+    // Initialize performance optimizations
+    document.addEventListener('DOMContentLoaded', () => {
+        preloadCriticalResources();
+
+        // Add touch-friendly hover states for mobile
+        if ('ontouchstart' in window) {
+            document.body.classList.add('touch-device');
+        }
+    });
 });
 
 // Smooth reveal for section titles
@@ -789,7 +779,7 @@ document.addEventListener('DOMContentLoaded', () => {
         { selector: '.contact-form', name: 'Contact Form' },
         { selector: '.navbar', name: 'Navigation' }
     ];
-    
+
     requiredElements.forEach(element => {
         const el = document.querySelector(element.selector);
         if (!el) {
@@ -798,31 +788,31 @@ document.addEventListener('DOMContentLoaded', () => {
             console.log(`✓ ${element.name} found`);
         }
     });
-    
+
     // Check for image loading
     const images = document.querySelectorAll('img');
     images.forEach((img, index) => {
         img.addEventListener('load', () => {
             console.log(`✓ Image ${index + 1} loaded successfully: ${img.src}`);
         });
-        
+
         img.addEventListener('error', () => {
             console.error(`✗ Image ${index + 1} failed to load: ${img.src}`);
         });
     });
-    
+
     // Check for EmailJS initialization
     if (typeof emailjs !== 'undefined') {
         console.log('✓ EmailJS loaded successfully');
     } else {
         console.info('EmailJS not loaded (this is expected if client-side email sending isn\'t configured).');
     }
-    
+
     // Check Font Awesome
     const fontAwesomeTest = document.createElement('i');
     fontAwesomeTest.className = 'fas fa-test';
     document.body.appendChild(fontAwesomeTest);
-    
+
     const computedStyle = window.getComputedStyle(fontAwesomeTest);
     const ff = (computedStyle && (computedStyle.getPropertyValue('font-family') || computedStyle.fontFamily)) || '';
     // Look for common Font Awesome family identifiers (robust to CDN/version differences)
@@ -831,6 +821,6 @@ document.addEventListener('DOMContentLoaded', () => {
     } else {
         console.warn('✗ Font Awesome may not be loaded properly (font-family: ' + ff + ')');
     }
-    
+
     document.body.removeChild(fontAwesomeTest);
 });
