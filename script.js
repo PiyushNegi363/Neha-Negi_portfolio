@@ -160,16 +160,20 @@ document.querySelectorAll('a[href^="#"]').forEach(anchor => {
     });
 });
 
-// Navbar background change on scroll (Light Mode)
+// Navbar background change on scroll (Pill Mode)
 let ticking = false;
 function updateNavbar() {
     const navbar = document.querySelector('.navbar');
-    if (window.scrollY > 100) {
-        navbar.style.background = 'rgba(255, 255, 255, 0.98)';
-        navbar.style.boxShadow = '0 2px 20px rgba(0, 0, 0, 0.1)';
+    if (!navbar) return;
+
+    if (window.scrollY > 50) {
+        navbar.style.background = 'rgba(255, 255, 255, 0.85)';
+        navbar.style.boxShadow = '0 15px 35px rgba(0, 0, 0, 0.12)';
+        navbar.style.padding = '0.6rem 1.5rem'; // Shrink slightly on scroll
     } else {
-        navbar.style.background = 'rgba(255, 255, 255, 0.95)';
-        navbar.style.boxShadow = '0 2px 10px rgba(0, 0, 0, 0.05)';
+        navbar.style.background = 'rgba(255, 255, 255, 0.6)';
+        navbar.style.boxShadow = '0 10px 30px rgba(0, 0, 0, 0.08)';
+        navbar.style.padding = '0.8rem 1.5rem';
     }
     ticking = false;
 }
@@ -736,14 +740,12 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // Initialize performance optimizations
-    document.addEventListener('DOMContentLoaded', () => {
-        preloadCriticalResources();
+    preloadCriticalResources();
 
-        // Add touch-friendly hover states for mobile
-        if ('ontouchstart' in window) {
-            document.body.classList.add('touch-device');
-        }
-    });
+    // Add touch-friendly hover states for mobile
+    if ('ontouchstart' in window) {
+        document.body.classList.add('touch-device');
+    }
 });
 
 // Smooth reveal for section titles
@@ -767,60 +769,206 @@ footerSections.forEach((section, index) => {
     scrollObserver.observe(section);
 });
 
-// Debug and error handling
-console.log('Portfolio website loaded successfully');
 
-// Check for missing elements and log them
-document.addEventListener('DOMContentLoaded', () => {
-    const requiredElements = [
-        { selector: '.hero-title', name: 'Hero Title' },
-        { selector: '.profile-image', name: 'Profile Image' },
-        { selector: '#contact', name: 'Contact Section' },
-        { selector: '.contact-form', name: 'Contact Form' },
-        { selector: '.navbar', name: 'Navigation' }
+/* ----------------------------------------------------------------
+   BENTO CARD COLOR CYCLER
+   Directly sets border-color + box-shadow on each card via JS.
+   CSS transition (2s ease) on those properties makes it silky smooth.
+   Staggered phase offset (cardIndex * stepOffset) creates a wave.
+   ---------------------------------------------------------------- */
+(function initBentoColorCycle() {
+    // Color stops: [r, g, b]
+    const colors = [
+        [99,  102, 241],   // Indigo
+        [168, 85,  247],   // Violet
+        [236, 72,  153],   // Rose
+        [20,  184, 166],   // Teal
+        [245, 158, 11],    // Amber
     ];
 
-    requiredElements.forEach(element => {
-        const el = document.querySelector(element.selector);
-        if (!el) {
-            console.warn(`Missing element: ${element.name} (${element.selector})`);
-        } else {
-            console.log(`✓ ${element.name} found`);
-        }
-    });
+    // Duration per full cycle (ms)
+    const cycleDuration = 10000;
+    // How many ms between each card's phase start (wave effect)
+    const phaseStep = 1200;
 
-    // Check for image loading
-    const images = document.querySelectorAll('img');
-    images.forEach((img, index) => {
-        img.addEventListener('load', () => {
-            console.log(`✓ Image ${index + 1} loaded successfully: ${img.src}`);
-        });
-
-        img.addEventListener('error', () => {
-            console.error(`✗ Image ${index + 1} failed to load: ${img.src}`);
-        });
-    });
-
-    // Check for EmailJS initialization
-    if (typeof emailjs !== 'undefined') {
-        console.log('✓ EmailJS loaded successfully');
-    } else {
-        console.info('EmailJS not loaded (this is expected if client-side email sending isn\'t configured).');
+    /**
+     * Linearly interpolate between two values
+     */
+    function lerp(a, b, t) {
+        return a + (b - a) * t;
     }
 
-    // Check Font Awesome
-    const fontAwesomeTest = document.createElement('i');
-    fontAwesomeTest.className = 'fas fa-test';
-    document.body.appendChild(fontAwesomeTest);
-
-    const computedStyle = window.getComputedStyle(fontAwesomeTest);
-    const ff = (computedStyle && (computedStyle.getPropertyValue('font-family') || computedStyle.fontFamily)) || '';
-    // Look for common Font Awesome family identifiers (robust to CDN/version differences)
-    if (/font\s?-?awesome|fontawesome|fortawesome/i.test(ff)) {
-        console.log('✓ Font Awesome loaded successfully');
-    } else {
-        console.warn('✗ Font Awesome may not be loaded properly (font-family: ' + ff + ')');
+    /**
+     * Given a progress value 0-1 over the full cycle,
+     * return the interpolated [r, g, b] across the color stops.
+     */
+    function getColor(progress) {
+        const total = colors.length;
+        const scaled = progress * total;
+        const idx = Math.floor(scaled) % total;
+        const next = (idx + 1) % total;
+        const t = scaled - Math.floor(scaled);
+        return [
+            Math.round(lerp(colors[idx][0], colors[next][0], t)),
+            Math.round(lerp(colors[idx][1], colors[next][1], t)),
+            Math.round(lerp(colors[idx][2], colors[next][2], t)),
+        ];
     }
 
-    document.body.removeChild(fontAwesomeTest);
-});
+    /**
+     * Apply the color to a card element by updating CSS custom properties.
+     * The CSS handles combining these with alpha values for border and glow.
+     */
+    function applyColor(card, rgb) {
+        const [r, g, b] = rgb;
+        card.style.setProperty('--bcr', r);
+        card.style.setProperty('--bcg', g);
+        card.style.setProperty('--bcb', b);
+    }
+
+    /**
+     * Main tick — called on each rAF frame.
+     * Only updates cards that are hovering (paused) or not.
+     */
+    function tick(cards, featureFlags, startTime, now) {
+        const elapsed = now - startTime;
+
+        cards.forEach(function(card, i) {
+            // Skip if user is hovering (pause effect)
+            if (card.matches(':hover')) return;
+
+            // Each card has a phase offset so they cycle at different times
+            const phase = (elapsed + i * phaseStep) % cycleDuration;
+            const progress = phase / cycleDuration;
+            const rgb = getColor(progress);
+            applyColor(card, rgb);
+        });
+
+        requestAnimationFrame(function(t) { tick(cards, featureFlags, startTime, t); });
+    }
+
+    function start() {
+        const selectors = [
+            '.exp-bento-card',
+            '.skill-bento-card',
+            '.svc-bento-card',
+            '.proj-bento-card',
+        ];
+
+        const featuredClasses = ['exp-featured', 'svc-featured', 'proj-featured'];
+
+        const cards = Array.from(
+            document.querySelectorAll(selectors.join(','))
+        );
+
+        if (!cards.length) return;
+
+        // Pre-tag each card as featured or not
+        const featureFlags = cards.map(function(c) {
+            return featuredClasses.some(function(cls) { return c.classList.contains(cls); });
+        });
+
+        requestAnimationFrame(function(now) {
+            tick(cards, featureFlags, now, now);
+        });
+    }
+
+    // Start after DOM is ready (cards may not exist yet on first parse)
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', start);
+    } else {
+        start();
+    }
+})();
+
+/* ----------------------------------------------------------------
+   DYNAMIC PIXEL DIVIDER
+   Generates a row of pixel blocks for the section transition
+   ---------------------------------------------------------------- */
+function initPixelDividers() {
+    const sections = Array.from(document.querySelectorAll('section'));
+    if (sections.length < 2) return;
+
+    // Remove any manually added pixel dividers in HTML
+    document.querySelectorAll('.pixel-divider').forEach(el => el.remove());
+
+    const blockSize = 30; // 30x30 pixels
+    const rows = 4;
+    const height = rows * blockSize;
+    const dividers = [];
+
+    sections.forEach((section, index) => {
+        if (index === 0) return; // Skip the first section (hero)
+
+        const divider = document.createElement('div');
+        divider.className = 'pixel-divider';
+        section.insertBefore(divider, section.firstChild);
+        
+        // Ensure section has relative positioning to contain absolute divider
+        section.style.position = 'relative';
+
+        dividers.push({
+            element: divider,
+            prevSection: sections[index - 1]
+        });
+    });
+
+    function generateGrids() {
+        const cols = Math.ceil(window.innerWidth / blockSize);
+        // Probability of a block matching the previous section's color for each row
+        const whiteProb = [0.95, 0.70, 0.35, 0.05];
+
+        dividers.forEach(item => {
+            const { element, prevSection } = item;
+            element.innerHTML = '';
+            
+            // Get computed background color of previous section
+            const prevBg = window.getComputedStyle(prevSection).backgroundColor;
+            
+            element.style.display = 'grid';
+            element.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
+            element.style.gridTemplateRows = `repeat(${rows}, ${blockSize}px)`;
+            element.style.height = `${height}px`;
+
+            for (let r = 0; r < rows; r++) {
+                for (let c = 0; c < cols; c++) {
+                    const block = document.createElement('div');
+                    block.className = 'pixel-cell';
+                    
+                    // 20% of blocks animate to give an "alive" feel
+                    const isAnimated = Math.random() < 0.20;
+                    
+                    if (isAnimated) {
+                        const animTypes = ['pixel-anim-1', 'pixel-anim-2', 'pixel-anim-3'];
+                        const animClass = animTypes[Math.floor(Math.random() * animTypes.length)];
+                        block.classList.add(animClass);
+                        block.style.animationDelay = `-${Math.random() * 5}s`;
+                    } else {
+                        const isSolid = Math.random() < whiteProb[r];
+                        if (isSolid) {
+                            block.style.backgroundColor = prevBg;
+                        }
+                    }
+                    
+                    // Provide the previous background color as a CSS var for keyframe animations
+                    block.style.setProperty('--block-color', prevBg);
+                    element.appendChild(block);
+                }
+            }
+        });
+    }
+
+    generateGrids();
+
+    let resizeTimer;
+    window.addEventListener('resize', () => {
+        clearTimeout(resizeTimer);
+        resizeTimer = setTimeout(generateGrids, 250);
+    });
+}
+
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initPixelDividers);
+} else {
+    initPixelDividers();
+}
